@@ -5,26 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Chat</title>
   <style>
-    :root { --bg: #f0f0f0; --text: #1f2937; --muted: #6b7280; --user: #e2e8f0; --assistant: #10a37f; }
+    :root { --bg: #0b0f14; --panel: #111827; --text: #e5e7eb; --muted: #9ca3af; --user: #1f2937; --assistant: #10b981; --border: #1f2937; }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #e5e7eb; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; color: var(--text); }
+    body { margin: 0; background: var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; color: var(--text); }
     .app { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
-    .chat { background: #fff; width: 100%; max-width: 920px; height: 80vh; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.08); display: flex; flex-direction: column; overflow: hidden; }
-    .chat-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; display: flex; align-items: center; gap: 12px; }
+    .chat { background: var(--panel); width: 100%; max-width: 920px; height: 80vh; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.4); display: flex; flex-direction: column; overflow: hidden; }
+    .chat-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--panel); display: flex; align-items: center; gap: 12px; }
     .chat-header .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--assistant); }
     .chat-header h1 { font-size: 16px; margin: 0; font-weight: 600; }
     .ml-auto { margin-left: auto; }
-    .btn-secondary { background: transparent; color: var(--assistant); border: 1px solid #d1fae5; }
-    .messages { flex: 1 1 auto; overflow-y: auto; padding: 16px; background: #f7f7f8; }
-    .msg { display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px; margin: 8px auto; max-width: 80%; line-height: 1.5; }
+    .btn-secondary { background: transparent; color: var(--assistant); border: 1px solid rgba(16,185,129,.25); }
+    .messages { flex: 1 1 auto; overflow-y: auto; padding: 16px; background: var(--bg); }
+    .msg { display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px; margin: 8px auto; max-width: 80%; line-height: 1.5; color: var(--text); }
     .msg.user { background: var(--user); margin-left: auto; }
-    .msg.assistant { background: #ffffff; border: 1px solid #eef2f7; margin-right: auto; }
+    .msg.assistant { background: #0f172a; border: 1px solid var(--border); margin-right: auto; }
     .msg .role { font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-    .composer { border-top: 1px solid #e5e7eb; padding: 12px; background: #fff; }
+    .composer { border-top: 1px solid var(--border); padding: 12px; background: var(--panel); }
     .input-row { display: flex; gap: 8px; }
-    input[type="text"] { flex: 1; padding: 14px 16px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 16px; outline: none; }
-    input[type="text"]:focus { border-color: #a3a3a3; }
-    button { padding: 14px 18px; border-radius: 10px; border: none; background: var(--assistant); color: #fff; font-weight: 600; cursor: pointer; }
+    input[type="text"] { flex: 1; padding: 14px 16px; border: 1px solid #374151; background: #0b1220; color: var(--text); border-radius: 10px; font-size: 16px; outline: none; }
+    input[type="text"]::placeholder { color: #6b7280; }
+    input[type="text"]:focus { border-color: #4b5563; }
+    button { padding: 14px 18px; border-radius: 10px; border: none; background: var(--assistant); color: #0b0f14; font-weight: 600; cursor: pointer; }
     button:disabled { opacity: .6; cursor: not-allowed; }
     .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
   </style>
@@ -110,7 +111,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chatId, message: text })
         });
-        if (!res.ok) throw new Error('Request failed');
+        if (!res.ok)
+          throw new Error('Request failed');
         const data = await res.json();
         addMessage('assistant', data.reply);
       } catch (e) {
