@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ktor-sample:latest
+    ports:
+      - "8080:8080"
+    environment:
+      # Optional: JVM options, e.g., increase memory or pass system properties
+      - JAVA_OPTS=
+      # The app code currently uses placeholder API keys; set them if you wire the app to read env vars.
+      - OPENAI_API_KEY=
+      - ANTHROPIC_API_KEY=
+      - GOOGLE_API_KEY=
+      - OPENROUTER_API_KEY=
+      - DEEPSEEK_API_KEY=
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:8080/" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: run Ollama locally and expose it to the app network.
+  # If you enable this, update your application to point to http://ollama:11434 instead of localhost.
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+   ollama:

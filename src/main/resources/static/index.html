@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Chat</title>
+  <style>
+    :root { --bg: #f0f0f0; --text: #1f2937; --muted: #6b7280; --user: #e2e8f0; --assistant: #10a37f; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #e5e7eb; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; color: var(--text); }
+    .app { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .chat { background: #fff; width: 100%; max-width: 920px; height: 80vh; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.08); display: flex; flex-direction: column; overflow: hidden; }
+    .chat-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; display: flex; align-items: center; gap: 12px; }
+    .chat-header .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--assistant); }
+    .chat-header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+    .ml-auto { margin-left: auto; }
+    .btn-secondary { background: transparent; color: var(--assistant); border: 1px solid #d1fae5; }
+    .messages { flex: 1 1 auto; overflow-y: auto; padding: 16px; background: #f7f7f8; }
+    .msg { display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px; margin: 8px auto; max-width: 80%; line-height: 1.5; }
+    .msg.user { background: var(--user); margin-left: auto; }
+    .msg.assistant { background: #ffffff; border: 1px solid #eef2f7; margin-right: auto; }
+    .msg .role { font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .composer { border-top: 1px solid #e5e7eb; padding: 12px; background: #fff; }
+    .input-row { display: flex; gap: 8px; }
+    input[type="text"] { flex: 1; padding: 14px 16px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 16px; outline: none; }
+    input[type="text"]:focus { border-color: #a3a3a3; }
+    button { padding: 14px 18px; border-radius: 10px; border: none; background: var(--assistant); color: #fff; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="chat">
+      <div class="chat-header"><span class="dot"></span><h1>AI Chat</h1><button id="newChat" class="btn-secondary ml-auto" type="button" title="Start a new conversation">New Chat</button></div>
+      <div id="messages" class="messages"></div>
+      <div class="composer">
+        <form id="form" class="input-row">
+          <input id="input" type="text" placeholder="Message…" autocomplete="off" required />
+          <button id="send" type="submit">Send</button>
+        </form>
+        <div class="hint">Use “New Chat” to start a fresh conversation. A chat is also created on page load.</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    const newChatBtn = document.getElementById('newChat');
+
+    let chatId = null;
+
+    function el(tag, className, text) {
+      const e = document.createElement(tag);
+      if (className) e.className = className;
+      if (text) e.textContent = text;
+      return e;
+    }
+
+    function addMessage(role, content) {
+      const wrap = el('div', `msg ${role}`);
+      const contentEl = el('div');
+      const roleEl = el('div', 'role', role === 'user' ? 'You' : 'Assistant');
+      const textEl = el('div', 'text');
+      textEl.textContent = content;
+      contentEl.appendChild(roleEl);
+      contentEl.appendChild(textEl);
+      wrap.appendChild(contentEl);
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function createChat() {
+      try {
+        const res = await fetch('/ai/createChat', { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to create chat');
+        const data = await res.json();
+        chatId = data.chatId;
+        (data.history || []).forEach(m => addMessage(m.role, m.content));
+      } catch (e) {
+        console.error(e);
+        addMessage('assistant', 'Failed to initialize chat. Please reload.');
+      }
+    }
+
+    async function newChat() {
+      try {
+        newChatBtn.disabled = true;
+        sendBtn.disabled = true;
+        messagesEl.innerHTML = '';
+        chatId = null;
+        await createChat();
+      } finally {
+        newChatBtn.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    async function sendMessage(text) {
+      if (!chatId) await createChat();
+      addMessage('user', text);
+      input.value = '';
+      sendBtn.disabled = true;
+      try {
+        const res = await fetch('/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chatId, message: text })
+        });
+        if (!res.ok) throw new Error('Request failed');
+        const data = await res.json();
+        addMessage('assistant', data.reply);
+      } catch (e) {
+        console.error(e);
+        addMessage('assistant', 'Error talking to the server.');
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const text = input.value.trim();
+      if (text) sendMessage(text);
+    });
+
+    newChatBtn.addEventListener('click', () => {
+      newChat();
+    });
+
+    // Initialize
+    createChat();
+  </script>
+</body>
+</html>
