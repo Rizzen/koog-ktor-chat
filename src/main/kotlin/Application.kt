@@ -1,7 +1,6 @@
 package com.example
 
 import ai.koog.agents.features.sql.providers.PostgresPersistenceSchemaMigrator
-import ai.koog.agents.features.sql.providers.PostgresPersistencyStorageProvider
 import io.ktor.server.application.*
 import org.jetbrains.exposed.sql.Database
 

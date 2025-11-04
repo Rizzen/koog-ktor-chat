@@ -73,35 +73,6 @@ fun Application.configureRouting() {
             }
         }
 
-        // REST endpoints (kept for backward compatibility)
-        route("/ai") {
-            post("/createChat") {
-                val chatId = UUID.randomUUID().toString()
-                ChatStore.chats[chatId] = mutableListOf()
-                call.respond(CreateChatResponse(chatId, emptyList()))
-            }
-
-            post("/chat") {
-                val now = Instant.now().toEpochMilli()
-                val request = call.receive<ChatRequest>()
-
-                val history = ChatStore.chats.computeIfAbsent(request.chatId) { mutableListOf() }
-                history.add(ChatMessage("user", request.message, now))
-
-                val (output, ts) = try {
-                    val out = agentService.askChatAgent(request.chatId, request.message)
-                    out to now
-                } catch (e: Throwable) {
-                    application.environment.log.error("AI agent call failed", e)
-                    ("Sorry, the AI service is unavailable right now. Please try again later.") to Instant.now()
-                        .toEpochMilli()
-                }
-
-                history.add(ChatMessage("assistant", output, ts))
-                call.respond(ChatResponse(reply = output, history = history))
-            }
-        }
-
         get("/") {
             call.respondRedirect("/static/index.html")
         }

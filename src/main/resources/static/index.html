@@ -31,133 +31,133 @@
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="chat">
-      <div class="chat-header"><span class="dot"></span><h1>AI Chat</h1><button id="newChat" class="btn-secondary ml-auto" type="button" title="Start a new conversation">New Chat</button></div>
-      <div id="messages" class="messages"></div>
-      <div class="composer">
-        <form id="form" class="input-row">
-          <input id="input" type="text" placeholder="Message…" autocomplete="off" required />
-          <button id="send" type="submit">Send</button>
-        </form>
-        <div class="hint">Use “New Chat” to start a fresh conversation. A chat is also created on page load.</div>
-      </div>
+<div class="app">
+  <div class="chat">
+    <div class="chat-header"><span class="dot"></span><h1>AI Chat</h1><button id="newChat" class="btn-secondary ml-auto" type="button" title="Start a new conversation">New Chat</button></div>
+    <div id="messages" class="messages"></div>
+    <div class="composer">
+      <form id="form" class="input-row">
+        <input id="input" type="text" placeholder="Message…" autocomplete="off" required />
+        <button id="send" type="submit">Send</button>
+      </form>
+      <div class="hint">Use “New Chat” to start a fresh conversation. A chat is also created on page load.</div>
     </div>
   </div>
-  <script>
-    const messagesEl = document.getElementById('messages');
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
-    const sendBtn = document.getElementById('send');
-    const newChatBtn = document.getElementById('newChat');
+</div>
+<script>
+  const messagesEl = document.getElementById('messages');
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const newChatBtn = document.getElementById('newChat');
 
-    let chatId = null;
-    let socket = null;
-    let connected = false;
+  let chatId = null;
+  let socket = null;
+  let connected = false;
 
-    function el(tag, className, text) {
-      const e = document.createElement(tag);
-      if (className) e.className = className;
-      if (text) e.textContent = text;
-      return e;
-    }
+  function el(tag, className, text) {
+    const e = document.createElement(tag);
+    if (className) e.className = className;
+    if (text) e.textContent = text;
+    return e;
+  }
 
-    function addMessage(role, content) {
-      const wrap = el('div', `msg ${role}`);
-      const contentEl = el('div');
-      const roleEl = el('div', 'role', role === 'user' ? 'You' : 'Assistant');
-      const textEl = el('div', 'text');
-      textEl.textContent = content;
-      contentEl.appendChild(roleEl);
-      contentEl.appendChild(textEl);
-      wrap.appendChild(contentEl);
-      messagesEl.appendChild(wrap);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
+  function addMessage(role, content) {
+    const wrap = el('div', `msg ${role}`);
+    const contentEl = el('div');
+    const roleEl = el('div', 'role', role === 'user' ? 'You' : 'Assistant');
+    const textEl = el('div', 'text');
+    textEl.textContent = content;
+    contentEl.appendChild(roleEl);
+    contentEl.appendChild(textEl);
+    wrap.appendChild(contentEl);
+    messagesEl.appendChild(wrap);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
 
-    function connectSocket() {
-      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
-      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      socket = new WebSocket(`${proto}://${location.host}/ws/chat`);
+  function connectSocket() {
+    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    socket = new WebSocket(`${proto}://${location.host}/ws/chat`);
 
-      socket.onopen = () => {
-        connected = true;
-        // On connect, start a fresh chat
-        socket.send(JSON.stringify({ type: 'create_chat' }));
-      };
+    socket.onopen = () => {
+      connected = true;
+      // On connect, start a fresh chat
+      socket.send(JSON.stringify({ type: 'create_chat' }));
+    };
 
-      socket.onmessage = (ev) => {
-        try {
-          const msg = JSON.parse(ev.data);
-          switch (msg.type) {
-            case 'chat_created':
-              chatId = msg.chatId;
-              (msg.history || []).forEach(m => addMessage(m.role, m.content));
-              break;
-            case 'assistant_message':
-              chatId = msg.chatId;
-              addMessage('assistant', msg.reply);
-              break;
-            case 'history':
-              messagesEl.innerHTML = '';
-              (msg.history || []).forEach(m => addMessage(m.role, m.content));
-              break;
-            case 'error':
-              addMessage('assistant', msg.message || 'Server error');
-              break;
-          }
-        } catch (e) {
-          console.error('Failed to parse server message', e);
+    socket.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        switch (msg.type) {
+          case 'chat_created':
+            chatId = msg.chatId;
+            (msg.history || []).forEach(m => addMessage(m.role, m.content));
+            break;
+          case 'assistant_message':
+            chatId = msg.chatId;
+            addMessage('assistant', msg.reply);
+            break;
+          case 'history':
+            messagesEl.innerHTML = '';
+            (msg.history || []).forEach(m => addMessage(m.role, m.content));
+            break;
+          case 'error':
+            addMessage('assistant', msg.message || 'Server error');
+            break;
         }
-      };
-
-      socket.onclose = () => {
-        connected = false;
-        addMessage('assistant', 'Disconnected from server. Retrying in 2s…');
-        setTimeout(connectSocket, 2000);
-      };
-
-      socket.onerror = (e) => console.error('WebSocket error', e);
-    }
-
-    function newChat() {
-      if (!connected) connectSocket();
-      messagesEl.innerHTML = '';
-      chatId = null;
-      // Request a new chat on the existing socket
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'create_chat' }));
+      } catch (e) {
+        console.error('Failed to parse server message', e);
       }
+    };
+
+    socket.onclose = () => {
+      connected = false;
+      addMessage('assistant', 'Disconnected from server. Retrying in 2s…');
+      setTimeout(connectSocket, 2000);
+    };
+
+    socket.onerror = (e) => console.error('WebSocket error', e);
+  }
+
+  function newChat() {
+    if (!connected) connectSocket();
+    messagesEl.innerHTML = '';
+    chatId = null;
+    // Request a new chat on the existing socket
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'create_chat' }));
     }
+  }
 
-    function sendMessage(text) {
-      if (!connected) connectSocket();
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        addMessage('assistant', 'Connecting… please try again.');
-        return;
-      }
-      if (!chatId) {
-        addMessage('assistant', 'No chat yet. Creating one…');
-        socket.send(JSON.stringify({ type: 'create_chat' }));
-        return;
-      }
-      addMessage('user', text);
-      input.value = '';
-      socket.send(JSON.stringify({ type: 'user_message', chatId, message: text }));
+  function sendMessage(text) {
+    if (!connected) connectSocket();
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      addMessage('assistant', 'Connecting… please try again.');
+      return;
     }
+    if (!chatId) {
+      addMessage('assistant', 'No chat yet. Creating one…');
+      socket.send(JSON.stringify({ type: 'create_chat' }));
+      return;
+    }
+    addMessage('user', text);
+    input.value = '';
+    socket.send(JSON.stringify({ type: 'user_message', chatId, message: text }));
+  }
 
-    form.addEventListener('submit', (ev) => {
-      ev.preventDefault();
-      const text = input.value.trim();
-      if (text) sendMessage(text);
-    });
+  form.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const text = input.value.trim();
+    if (text) sendMessage(text);
+  });
 
-    newChatBtn.addEventListener('click', () => {
-      newChat();
-    });
+  newChatBtn.addEventListener('click', () => {
+    newChat();
+  });
 
-    // Initialize
-    connectSocket();
-  </script>
+  // Initialize
+  connectSocket();
+</script>
 </body>
 </html>

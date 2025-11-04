@@ -1,5 +1,5 @@
 [versions]
-koog = "0.4.3-dev-25092025-feat-856"
+koog = "0.5.2"
 kotlin = "2.2.20"
 ktor = "3.3.0"
 logback = "1.4.14"
