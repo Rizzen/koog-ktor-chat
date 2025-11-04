@@ -3,18 +3,25 @@ package com.example
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
-import kotlinx.serialization.Serializable
+import io.ktor.server.websocket.*
 import kotlinx.serialization.json.Json
-import java.time.Instant
-import java.util.*
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.seconds
 
+// Shared JSON configuration for both REST and WebSocket payloads
+val appJson: Json = Json {
+    ignoreUnknownKeys = true
+    prettyPrint = false
+    classDiscriminator = "type"
+}
 
 fun Application.configureFrameworks() {
     install(ContentNegotiation) {
-        json(Json { ignoreUnknownKeys = true; prettyPrint = false })
+        json(appJson)
+    }
+    install(WebSockets) {
+        pingPeriod = 20.seconds
+        timeout = 15.seconds
+        maxFrameSize = Long.MAX_VALUE
+        masking = false
     }
 }

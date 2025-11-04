@@ -52,6 +52,8 @@
     const newChatBtn = document.getElementById('newChat');
 
     let chatId = null;
+    let socket = null;
+    let connected = false;
 
     function el(tag, className, text) {
       const e = document.createElement(tag);
@@ -73,55 +75,75 @@
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    async function createChat() {
-      try {
-        const res = await fetch('/ai/createChat', { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to create chat');
-        const data = await res.json();
-        chatId = data.chatId;
-        (data.history || []).forEach(m => addMessage(m.role, m.content));
-      } catch (e) {
-        console.error(e);
-        addMessage('assistant', 'Failed to initialize chat. Please reload.');
+    function connectSocket() {
+      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      socket = new WebSocket(`${proto}://${location.host}/ws/chat`);
+
+      socket.onopen = () => {
+        connected = true;
+        // On connect, start a fresh chat
+        socket.send(JSON.stringify({ type: 'create_chat' }));
+      };
+
+      socket.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          switch (msg.type) {
+            case 'chat_created':
+              chatId = msg.chatId;
+              (msg.history || []).forEach(m => addMessage(m.role, m.content));
+              break;
+            case 'assistant_message':
+              chatId = msg.chatId;
+              addMessage('assistant', msg.reply);
+              break;
+            case 'history':
+              messagesEl.innerHTML = '';
+              (msg.history || []).forEach(m => addMessage(m.role, m.content));
+              break;
+            case 'error':
+              addMessage('assistant', msg.message || 'Server error');
+              break;
+          }
+        } catch (e) {
+          console.error('Failed to parse server message', e);
+        }
+      };
+
+      socket.onclose = () => {
+        connected = false;
+        addMessage('assistant', 'Disconnected from server. Retrying in 2s…');
+        setTimeout(connectSocket, 2000);
+      };
+
+      socket.onerror = (e) => console.error('WebSocket error', e);
+    }
+
+    function newChat() {
+      if (!connected) connectSocket();
+      messagesEl.innerHTML = '';
+      chatId = null;
+      // Request a new chat on the existing socket
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'create_chat' }));
       }
     }
 
-    async function newChat() {
-      try {
-        newChatBtn.disabled = true;
-        sendBtn.disabled = true;
-        messagesEl.innerHTML = '';
-        chatId = null;
-        await createChat();
-      } finally {
-        newChatBtn.disabled = false;
-        sendBtn.disabled = false;
-        input.focus();
+    function sendMessage(text) {
+      if (!connected) connectSocket();
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        addMessage('assistant', 'Connecting… please try again.');
+        return;
       }
-    }
-
-    async function sendMessage(text) {
-      if (!chatId) await createChat();
+      if (!chatId) {
+        addMessage('assistant', 'No chat yet. Creating one…');
+        socket.send(JSON.stringify({ type: 'create_chat' }));
+        return;
+      }
       addMessage('user', text);
       input.value = '';
-      sendBtn.disabled = true;
-      try {
-        const res = await fetch('/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chatId, message: text })
-        });
-        if (!res.ok)
-          throw new Error('Request failed');
-        const data = await res.json();
-        addMessage('assistant', data.reply);
-      } catch (e) {
-        console.error(e);
-        addMessage('assistant', 'Error talking to the server.');
-      } finally {
-        sendBtn.disabled = false;
-        input.focus();
-      }
+      socket.send(JSON.stringify({ type: 'user_message', chatId, message: text }));
     }
 
     form.addEventListener('submit', (ev) => {
@@ -135,7 +157,7 @@
     });
 
     // Initialize
-    createChat();
+    connectSocket();
   </script>
 </body>
 </html>

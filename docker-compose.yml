@@ -1,29 +1,29 @@
 version: "3.9"
 
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ktor-sample:latest
-    ports:
-      - "8080:8080"
-    environment:
-      - OLLAMA_BASE_URL=http://ollama:11434
-      # Postgres connection for the app
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=agents
-      - POSTGRES_USER=agent_user
-      - POSTGRES_PASSWORD=agent_pass
-      - POSTGRES_JDBC_DRIVER=org.postgresql.Driver
-      # Alternatively, provide a full JDBC URL (overrides host/port/db):
-      # - POSTGRES_URL=jdbc:postgresql://postgres:5432/agents
-    healthcheck:
-      test: [ "CMD", "wget", "-qO-", "http://localhost:8080/" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+#  app:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    image: ktor-sample:latest
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      - OLLAMA_BASE_URL=http://ollama:11434
+#      # Postgres connection for the app
+#      - POSTGRES_HOST=postgres
+#      - POSTGRES_PORT=5432
+#      - POSTGRES_DB=agents
+#      - POSTGRES_USER=agent_user
+#      - POSTGRES_PASSWORD=agent_pass
+#      - POSTGRES_JDBC_DRIVER=org.postgresql.Driver
+#      # Alternatively, provide a full JDBC URL (overrides host/port/db):
+#      # - POSTGRES_URL=jdbc:postgresql://postgres:5432/agents
+#    healthcheck:
+#      test: [ "CMD", "wget", "-qO-", "http://localhost:8080/" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
 
   ollama:
     image: ollama/ollama:latest

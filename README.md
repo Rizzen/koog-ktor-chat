@@ -17,10 +17,11 @@ The goal is to demonstrate how to wire Koog’s agent and persistence features i
 By default the agent runs against an Ollama model (llama3.2). You can swap it for another Koog-supported backend if you want.
 
 ## Architecture (high level)
-- Ktor app initializes Koog and JSON serialization.
-- Two API endpoints are served under /ai:
-  - POST /ai/createChat → creates a new chatId
-  - POST /ai/chat → sends a message and returns the assistant reply plus history
+- Ktor app initializes Koog, JSON serialization, and WebSockets.
+- Primary API is now a WebSocket at `/ws/chat` using a small JSON protocol with a `type` discriminator.
+  - Inbound types: `create_chat`, `user_message`, `history_request`
+  - Outbound types: `chat_created`, `assistant_message`, `history`, `error`
+- Legacy REST endpoints under `/ai` remain temporarily for backward compatibility.
 - AgentService wires a Koog AIAgent with:
   - Ollama executor (default model: Meta.LLAMA_3_2)
   - Koog Persistency using PostgreSQL
