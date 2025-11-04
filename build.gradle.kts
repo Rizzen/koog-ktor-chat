@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.host.common)
     implementation(libs.koog.ktor)
+    implementation(libs.ktor.client.cio)
     implementation(libs.agents.features.snapshot)
     implementation(libs.agents.features.sql)
     implementation(libs.ktor.server.netty)

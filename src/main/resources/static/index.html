@@ -132,6 +132,7 @@
 
   function sendMessage(text) {
     if (!connected) connectSocket();
+    while (!socket || socket.readyState !== WebSocket.OPEN)
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       addMessage('assistant', 'Connecting… please try again.');
       return;

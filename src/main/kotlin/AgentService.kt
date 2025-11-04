@@ -2,18 +2,19 @@ package com.example
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.context.RollbackStrategy
+import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.agents.core.tools.ToolRegistry.Companion.invoke
+import ai.koog.agents.core.tools.reflect.tools
 import ai.koog.agents.features.opentelemetry.feature.OpenTelemetry
 import ai.koog.agents.features.opentelemetry.integration.weave.addWeaveExporter
 import ai.koog.agents.features.sql.providers.PostgresPersistenceStorageProvider
-import ai.koog.agents.snapshot.feature.Persistency
+import ai.koog.agents.snapshot.feature.Persistence
 import ai.koog.prompt.executor.clients.anthropic.AnthropicLLMClient
 import ai.koog.prompt.executor.clients.google.GoogleLLMClient
 import ai.koog.prompt.executor.clients.openai.OpenAILLMClient
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
-import ai.koog.prompt.executor.llms.all.simpleOllamaAIExecutor
 import ai.koog.prompt.llm.LLMProvider
-import ai.koog.prompt.llm.OllamaModels
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 
@@ -36,14 +37,20 @@ class AgentService {
         val anthropicKey = System.getenv("ANTHROPIC_API_KEY") ?: throw IllegalStateException("ANTHROPIC_API_KEY environment variable is not set")
         val googleAiKey = System.getenv("GOOGLE_AI_API_KEY") ?: throw IllegalStateException("GOOGLE_AI_API_KEY environment variable is not set")
 
+        val openMeteoClient = OpenMeteoClient()
+        val weatherTools = WeatherTools(openMeteoClient)
+        val toolRegistry = ToolRegistry {
+            tools(weatherTools)
+        }
+
         return AIAgent(
             promptExecutor = MultiLLMPromptExecutor(
                 LLMProvider.OpenAI to OpenAILLMClient(openAiKey),
                 LLMProvider.Anthropic to AnthropicLLMClient(anthropicKey),
                 LLMProvider.Google to GoogleLLMClient(googleAiKey)
             ),
-            llmModel = OpenAIModels.Chat.GPT4o,
-
+            llmModel = OpenAIModels.Chat.GPT5,
+            toolRegistry = toolRegistry,
         ) {
             install(OpenTelemetry) {
                 addWeaveExporter(
@@ -52,7 +59,7 @@ class AgentService {
                 )
                 setVerbose(true)
             }
-            this.install(Persistency) {
+            this.install(Persistence) {
                 this.storage = PostgresPersistenceStorageProvider(
                     database = Database.connect(
                         url = pgUrl,
